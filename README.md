@@ -45,8 +45,25 @@ used and audited across Devoteam's CSPR Enhanced customer base.
 
 1. Get your `customer_id`, `scan_scope`, `target_ids`, and `scanner_engine`
    from the CSPR setup page — it tells you exactly which values to use.
-2. Copy one of the `examples/` directories that matches your scan scope
-   and fill in your own values (replace every `acme-*` placeholder).
+2. Reference the module straight from GitHub in your own Terraform
+   configuration (the CSPR setup page generates this block for you):
+
+   ```hcl
+   module "cspr_onboarding" {
+     source = "github.com/devoteamgcloud/cspr-onboarding-terraform?ref=v0.1.1"
+
+     customer_id     = "your-customer-id"
+     sa_host_project = "your-host-project"
+     scan_scope      = "project"
+     target_ids      = ["your-target-project"]
+     scanner_engine  = "hybrid"
+   }
+   ```
+
+   Or clone this repository and start from the `examples/` directory
+   matching your scan scope (the examples use `source = "../.."`, so they
+   need the full clone, not a copy of the example folder alone). Replace
+   every `acme-*` placeholder with your own values.
 3. Run:
 
    ```sh
