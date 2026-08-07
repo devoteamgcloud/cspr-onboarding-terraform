@@ -317,14 +317,20 @@ resource "google_bigquery_dataset" "cai_ds" {
   depends_on = [google_project_service.apis]
 }
 
-# Scanner SA only needs bigquery.jobUser (host project, granted above) +
-# dataset-level dataViewer to run catalog queries — not dataOwner.
-resource "google_bigquery_dataset_access" "scanner_sa_viewer" {
+# Scanner SA needs bigquery.jobUser (host project, granted above) plus
+# dataset-level dataEditor — not dataOwner, and not merely dataViewer.
+# Cloud Asset writes no table at all for an asset type you happen not to
+# use, so the scanner pre-creates empty stub tables in this dataset for
+# those types. Without create rights every control that references a
+# missing type silently returns nothing and the review reports a clean
+# domain it never actually assessed. Scope stays this one dataset, which
+# holds your own inventory export.
+resource "google_bigquery_dataset_access" "scanner_sa_editor" {
   count = local.is_cai ? 1 : 0
 
   project       = local.sa_host_project_id
   dataset_id    = local.cai_dataset_id
-  role          = "roles/bigquery.dataViewer"
+  role          = "roles/bigquery.dataEditor"
   user_by_email = local.scanner_sa_email
 }
 

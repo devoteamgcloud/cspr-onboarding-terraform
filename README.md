@@ -22,7 +22,7 @@ revoke that at any time.
 | `roles/serviceusage.serviceUsageConsumer` on the host project | Lets the scanner make billed API calls against your project's quota. |
 | `roles/bigquery.jobUser` on the host project (CAI engines) | Lets the scanner run BigQuery jobs against the Cloud Asset export. |
 | Custom role `CSPRBucketIamViewer` (`storage.buckets.getIamPolicy` only), scope-aware (Prowler engines) | The one Storage IAM-read permission Prowler needs for its bucket-IAM checks, without granting `roles/storage.admin` or a broad ancestor-level security role. |
-| BigQuery dataset `cai_ds` + dataset-level `roles/bigquery.dataViewer` for the scanner SA, `roles/bigquery.dataEditor` for the Cloud Asset service agent (CAI engines) | Holds the Cloud Asset Inventory export the scanner queries against. |
+| BigQuery dataset `cai_ds` + dataset-level `roles/bigquery.dataEditor` for the scanner SA and for the Cloud Asset service agent (CAI engines) | Holds the Cloud Asset Inventory export the scanner queries against. The scanner also pre-creates empty stub tables here for asset types your environment does not use — Cloud Asset writes no table for those, and without a stub the matching checks cannot run and would be reported as unassessed. |
 
 Nothing here grants write access to your resources, and no API key or
 service account key is ever created. This is the same permission model
