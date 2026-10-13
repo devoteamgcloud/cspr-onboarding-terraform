@@ -1,14 +1,7 @@
-# Minimal example: folder scan scope, hybrid engine (Prowler + Cloud Asset
-# Inventory catalog checks).
+# Minimal example: folder scan scope (Cloud Asset Inventory scan).
 #
 # Replace every "acme-*" placeholder and the folder id with your own values
-# before running. folder_project_ids must list every project under the
-# target folder — generate it with:
-#
-#   gcloud asset search-all-resources \
-#     --scope=folders/FOLDER_ID \
-#     --asset-types=cloudresourcemanager.googleapis.com/Project \
-#     --format='value(project)'
+# before running.
 
 terraform {
   required_version = ">= 1.5"
@@ -42,12 +35,6 @@ module "cspr_onboarding" {
   sa_host_project = "acme-scanner-host"
   scan_scope      = "folder"
   target_ids      = ["123456789012"]
-  scanner_engine  = "hybrid"
-
-  folder_project_ids = [
-    "acme-prod-project",
-    "acme-staging-project",
-  ]
 }
 
 output "scanner_sa_email" {

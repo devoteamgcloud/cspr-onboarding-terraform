@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
+          terraform_version: 1.14.8
           terraform_wrapper: false
       - run: terraform fmt -check -recursive
 
@@ -28,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
+          terraform_version: 1.14.8
           terraform_wrapper: false
       - working-directory: ${{ matrix.dir }}
         run: |
