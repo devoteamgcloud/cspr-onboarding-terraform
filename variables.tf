@@ -18,7 +18,7 @@ variable "customer_id" {
 }
 
 variable "sa_host_project" {
-  description = "The GCP project that will host the read-only scanner service account (and, for the cai_catalog/hybrid engines, the BigQuery export dataset). This is a project you own; it is billed for API calls the scanner makes, not for the resources being scanned."
+  description = "The GCP project that will host the scanner service account and the BigQuery export dataset. This is a project you own; it is billed for API calls the scanner makes, not for the resources being scanned."
   type        = string
 }
 
@@ -33,27 +33,17 @@ variable "scan_scope" {
 }
 
 variable "target_ids" {
-  description = "The ids to scan, matching scan_scope: one or more project ids (scope=project), a folder id (scope=folder), or the organization id (scope=organization). Bare ids only — do not prefix with 'folders/' or 'organizations/'."
+  description = "The ids to scan, matching scan_scope, exactly one: a project id (scope=project), a folder id (scope=folder), or the organization id (scope=organization). Bare ids only — do not prefix with 'folders/' or 'organizations/'."
   type        = list(string)
 
   validation {
-    condition     = length(var.target_ids) > 0
-    error_message = "target_ids must contain at least one id."
+    condition     = length(var.target_ids) == 1
+    error_message = "target_ids must contain exactly one id: the project, folder, or organization to scan."
   }
 
   validation {
     condition     = alltrue([for id in var.target_ids : !can(regex("^(projects|folders|organizations)/", id))])
     error_message = "target_ids must be bare ids (e.g. \"123456789\" or \"my-project\"), not prefixed resource names like \"folders/123456789\"."
-  }
-}
-
-variable "scanner_engine" {
-  description = "Which CSPR scan engine to grant access for. The CSPR setup page tells you which value to use for your engagement: prowler (per-resource configuration checks), cai_catalog (Cloud Asset Inventory catalog checks, needs BigQuery), or hybrid (both)."
-  type        = string
-
-  validation {
-    condition     = contains(["prowler", "cai_catalog", "hybrid"], var.scanner_engine)
-    error_message = "scanner_engine must be one of: prowler, cai_catalog, hybrid."
   }
 }
 
@@ -66,12 +56,6 @@ variable "devoteam_runner_sa" {
     condition     = can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", var.devoteam_runner_sa))
     error_message = "devoteam_runner_sa must be a service account email of the form <name>@<project>.iam.gserviceaccount.com — this principal is granted impersonation of the scanner service account."
   }
-}
-
-variable "folder_project_ids" {
-  description = "Required when scan_scope = \"folder\" and scanner_engine is \"prowler\" or \"hybrid\": the ids of every project under the target folder. Custom IAM roles cannot be created at folder level in GCP, so the CSPRBucketIamViewer role (needed for Prowler's storage-bucket-IAM checks) is created and bound in each of these projects individually. Generate this list with: gcloud asset search-all-resources --scope=folders/FOLDER_ID --asset-types=cloudresourcemanager.googleapis.com/Project --format='value(project)'"
-  type        = list(string)
-  default     = []
 }
 
 variable "create_host_project" {
@@ -98,13 +82,13 @@ variable "host_project_billing_account" {
 }
 
 variable "create_dataset" {
-  description = "CAI engines only (cai_catalog, hybrid). If true, this module creates the 'cai_ds' BigQuery dataset that holds the Cloud Asset Inventory export. If false, a dataset named 'cai_ds' must already exist in sa_host_project and this module only grants access to it. Ignored for the prowler engine."
+  description = "If true, this module creates the 'cai_ds' BigQuery dataset that holds the Cloud Asset Inventory export. If false, a dataset named 'cai_ds' must already exist in sa_host_project and this module only grants access to it."
   type        = bool
   default     = true
 }
 
 variable "dataset_location" {
-  description = "CAI engines only. The BigQuery location for the 'cai_ds' dataset when create_dataset = true. This is only a suggested default: the scanner detects the dataset's real location at scan time, so any valid BigQuery location works."
+  description = "The BigQuery location for the 'cai_ds' dataset when create_dataset = true. This is only a suggested default: the scanner detects the dataset's real location at scan time, so any valid BigQuery location works."
   type        = string
   default     = "europe-west1"
 }

@@ -17,6 +17,6 @@ output "granted_scope_roles" {
 }
 
 output "cai_dataset_id" {
-  description = "The BigQuery Cloud Asset Inventory export dataset id, if this module created or references one (cai_catalog/hybrid engines only). Null for the prowler engine."
+  description = "The BigQuery Cloud Asset Inventory export dataset id that this module created or references."
   value       = local.cai_dataset_id
 }

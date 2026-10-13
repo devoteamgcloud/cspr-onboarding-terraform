@@ -1,5 +1,4 @@
-# Minimal example: organization scan scope, Cloud Asset Inventory catalog
-# engine only.
+# Minimal example: organization scan scope (Cloud Asset Inventory scan).
 #
 # Replace every "acme-*" placeholder and the org id with your own values
 # before running.
@@ -36,9 +35,8 @@ module "cspr_onboarding" {
   sa_host_project = "acme-scanner-host"
   scan_scope      = "organization"
   target_ids      = ["987654321098"]
-  scanner_engine  = "cai_catalog"
 
-  # cai_catalog manages its own BigQuery export dataset by default.
+  # The module creates its own BigQuery export dataset by default.
   create_dataset   = true
   dataset_location = "europe-west1"
 }

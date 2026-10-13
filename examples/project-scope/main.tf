@@ -1,4 +1,4 @@
-# Minimal example: single-project scan scope, Prowler engine.
+# Minimal example: single-project scan scope (Cloud Asset Inventory scan).
 #
 # Replace every "acme-*" placeholder with your own values before running.
 
@@ -34,7 +34,6 @@ module "cspr_onboarding" {
   sa_host_project = "acme-scanner-host"
   scan_scope      = "project"
   target_ids      = ["acme-prod-project"]
-  scanner_engine  = "prowler"
 
   # Uncomment to have this module create sa_host_project instead of
   # assuming it already exists:
