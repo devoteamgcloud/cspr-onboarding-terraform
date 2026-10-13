@@ -248,3 +248,28 @@ resource "google_bigquery_dataset_access" "cloudasset_agent_editor" {
 
   depends_on = [google_bigquery_dataset.cai_ds]
 }
+
+# ---------------------------------------------------------------------------
+# State migration from v0.1.x: these resources lost their `count` guard in
+# v0.2.0, so move the [0] instances instead of destroying and recreating them.
+# ---------------------------------------------------------------------------
+
+moved {
+  from = google_bigquery_dataset_access.scanner_sa_editor[0]
+  to   = google_bigquery_dataset_access.scanner_sa_editor
+}
+
+moved {
+  from = google_project_service_identity.cloudasset[0]
+  to   = google_project_service_identity.cloudasset
+}
+
+moved {
+  from = google_project_iam_member.cloudasset_agent_jobuser[0]
+  to   = google_project_iam_member.cloudasset_agent_jobuser
+}
+
+moved {
+  from = google_bigquery_dataset_access.cloudasset_agent_editor[0]
+  to   = google_bigquery_dataset_access.cloudasset_agent_editor
+}
