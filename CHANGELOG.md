@@ -33,7 +33,7 @@ that held custom-role or Prowler grants will show those being removed.
 ## [0.1.2] - 2026-08-07
 
 - Scanner dataset grant changed from `roles/bigquery.dataViewer` to
-  `roles/bigquery.dataEditor` (`efce79b`), so the scanner can pre-create
+  `roles/bigquery.dataEditor` (PR #1), so the scanner can pre-create
   stub tables for asset types the Cloud Asset export omits.
 - The resource was renamed from `scanner_sa_viewer` to `scanner_sa_editor`.
   On upgrade, state replaces the dataset access entry.

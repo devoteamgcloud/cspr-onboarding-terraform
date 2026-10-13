@@ -1,20 +1,19 @@
 # CSPR Enhanced customer-side onboarding module (Cloud Asset Inventory scan).
 #
-# Mirrors, resource for resource, the IAM plan produced by
-# app/src/cspr_core/iam_plan.py (build_iam_plan, engine cai_catalog) in the
-# CSPR Enhanced codebase: the same grants a customer admin would otherwise
-# paste into Cloud Shell from the CSPR setup page. See README.md for what
-# each grant is for.
+# Mirrors, resource for resource, the IAM plan produced by the CSPR Enhanced
+# build_iam_plan() (engine cai_catalog): the same grants a customer admin
+# would otherwise paste into Cloud Shell from the CSPR setup page. See
+# README.md for what each grant is for.
 #
 # Not expressed here (see README "What this does not do"):
 #   - Domain Restricted Sharing (org policy constraints/iam.allowedPolicyMemberDomains)
 #     override: a manual precondition, not an operation in the source plan.
 #   - The completion check the gcloud plan runs (verify_access): paste
 #     scanner_sa_email into the CSPR setup page instead.
-#   - Off-boarding: this module's off-boarding path is `terraform destroy`.
-#     Revoking the impersonation binding is the instant cutoff; the CAI
-#     export dataset survives destroy by design (delete_contents_on_destroy
-#     = false) unless you remove it yourself.
+#   - Off-boarding: see README. Revoking the impersonation binding stops new
+#     tokens; also disable the scanner SA for an urgent cutoff. The export
+#     dataset has delete_contents_on_destroy = false, so a destroy fails once
+#     it holds tables; remove it from state first to keep the export.
 
 locals {
   # ---------------------------------------------------------------------
@@ -190,8 +189,8 @@ resource "google_bigquery_dataset" "cai_ds" {
   location    = var.dataset_location
   description = "CSPR Cloud Asset Inventory export (Devoteam)"
 
-  # Off-boarding keeps the customer's exported inventory unless they
-  # explicitly delete the dataset themselves.
+  # Never auto-delete exported data: a destroy removes an EMPTY dataset but
+  # fails while it holds tables (see README Off-boarding).
   delete_contents_on_destroy = false
 
   # BigQuery API must be enabled before the dataset can be created on a
@@ -199,6 +198,9 @@ resource "google_bigquery_dataset" "cai_ds" {
   depends_on = [google_project_service.apis]
 }
 
+# Note: a first apply can hit a BigQuery concurrent-modification error on
+# the dataset ACL (the two access resources below edit it); re-run apply.
+#
 # Scanner SA needs bigquery.jobUser (host project, granted above) plus
 # dataset-level dataEditor — not dataOwner, and not merely dataViewer.
 # Cloud Asset writes no table at all for an asset type you happen not to

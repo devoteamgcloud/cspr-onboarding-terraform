@@ -19,7 +19,7 @@ revoke that at any time.
 
 | Grant | Why |
 |---|---|
-| `roles/iam.serviceAccountTokenCreator` on the scanner SA, for Devoteam's runner SA | Lets Devoteam impersonate the scanner SA to run scans. This is the single binding that matters for access control: remove it and Devoteam is cut off instantly. |
+| `roles/iam.serviceAccountTokenCreator` on the scanner SA, for Devoteam's runner SA | Lets Devoteam impersonate the scanner SA to run scans. This is the single binding that matters for access control: remove it and Devoteam can no longer mint new tokens (see Off-boarding for tokens already issued). |
 | `roles/cloudasset.viewer` on the scan target (project, folder or organization) | Lets the scanner read your Cloud Asset Inventory for the org, identity and inventory checks. |
 | `roles/serviceusage.serviceUsageConsumer` on the host project | Lets the scanner make billed API calls against your host project's quota. |
 | `roles/bigquery.jobUser` on the host project, for the scanner SA | Lets the scanner run BigQuery jobs against the Cloud Asset export. |
@@ -30,9 +30,10 @@ revoke that at any time.
 
 ### What the scanner can and cannot do
 
-The scanner has no write role on your projects, folders or organization.
-Its one write path is the `cai_ds` dataset in your host project: it writes
-the inventory export and the stub tables there, and nowhere else. The
+The scanner holds no role that can modify your resources. The data it
+writes goes into the `cai_ds` dataset in your host project (the inventory
+export and the stub tables), plus BigQuery job metadata in the host
+project, where it has BigQuery Job User. The
 scan reads your inventory metadata, including IAM policies and
 organization policies, because that is what the review assesses. No API
 key or service account key is ever created.
@@ -49,8 +50,8 @@ key or service account key is ever created.
   check that the access works. This module does not run it. To report
   completion, paste the `scanner_sa_email` output into the CSPR setup
   page (see Quickstart).
-- **Delete anything you already have.** The module only manages the
-  resources listed above.
+- **Remove or modify resources that already exist.** The module only
+  manages the resources listed above.
 
 ## Prerequisites
 
@@ -77,7 +78,8 @@ These come from the CSPR setup plan. Confirm them before you apply.
 1. Get your `customer_id`, `scan_scope` and `target_ids` from the CSPR
    setup page. It tells you exactly which values to use.
 2. Reference the module straight from GitHub in your own Terraform
-   configuration (the CSPR setup page generates this block for you):
+   configuration (the CSPR setup page generates this block for you from v1.49 onward;
+   older pages emit the v0.1.2 form):
 
    ```hcl
    module "cspr_onboarding" {
@@ -120,6 +122,10 @@ or, for the dataset only, set `create_dataset = false`. With
 `create_dataset = false`, a dataset named `cai_ds` must already exist in
 the host project and the module only grants access to it.
 
+A first apply can also hit a BigQuery concurrent-modification error on
+the `cai_ds` dataset ACL, because two access resources edit it. Re-run
+`terraform apply`.
+
 ## Variable reference
 
 | Variable | Type | Default | Description |
@@ -157,17 +163,25 @@ variables are gone, `target_ids` must hold exactly one id, and the
 
 Off-boarding is `terraform destroy`.
 
-If you want a guaranteed instant cutoff before the rest of the cleanup,
-revoke the impersonation binding on its own first:
+If you want to cut Devoteam off before the rest of the cleanup, remove
+the impersonation binding on its own first (replace `cspr_onboarding`
+with your module label):
 
 ```sh
-terraform destroy -target=google_service_account_iam_member.impersonation
+terraform destroy -target=module.cspr_onboarding.google_service_account_iam_member.impersonation
 ```
 
 That single binding is the only path Devoteam has into your environment.
-Once it's gone, Devoteam has no access, regardless of what other cleanup
-is still in flight. A full `terraform destroy` removes it too (typically
-early, since nothing else depends on it), the targeted command just makes
+Once it is removed and IAM has propagated, Devoteam can no longer mint
+new tokens. Tokens already issued stay valid until they expire, which can
+be up to one hour. For an urgent cutoff, also disable the scanner service
+account:
+
+```sh
+gcloud iam service-accounts disable SCANNER_SA_EMAIL
+```
+
+A full destroy removes the binding too; the targeted command just makes
 it the first and only step.
 
 If this module created the host project (`create_host_project = true`),
@@ -177,15 +191,23 @@ itself: the project is protected against deletion (`deletion_policy =
 is expected and safe, since every grant has already been revoked by then.
 Delete the project manually if you really want it gone.
 
-One exception: the Cloud Asset export dataset (`cai_ds`) is **not**
-deleted by `terraform destroy`, even if this module created it
-(`delete_contents_on_destroy = false`). This is deliberate, because you
-may want to keep your exported inventory data. Delete it yourself if you
-don't:
+The export dataset (`cai_ds`) is set with
+`delete_contents_on_destroy = false`. That means a destroy deletes the
+dataset only while it is empty. Once it holds tables, which happens after
+the first export, the destroy fails on the dataset. It does not delete
+your data. You have two options:
 
-```sh
-bq rm -r -f --dataset SA_HOST_PROJECT:cai_ds
-```
+- To keep the export, remove the dataset from state before destroying:
+
+  ```sh
+  terraform state rm 'module.cspr_onboarding.google_bigquery_dataset.cai_ds[0]'
+  ```
+
+- To delete it, remove the tables first, or delete the dataset yourself:
+
+  ```sh
+  bq rm -r -f --dataset SA_HOST_PROJECT:cai_ds
+  ```
 
 ## Security posture
 
@@ -196,8 +218,10 @@ bq rm -r -f --dataset SA_HOST_PROJECT:cai_ds
   `roles/bigquery.dataEditor` on the `cai_ds` dataset, which holds your own
   inventory export. See "What the scanner can and cannot do" above.
 - **You control revocation.** Removing the impersonation binding, or
-  running `terraform destroy`, cuts Devoteam off immediately. No action
-  on Devoteam's side is needed or possible.
+  running a destroy, stops Devoteam minting new tokens once IAM has
+  propagated. Tokens already issued last up to one hour; disable the
+  scanner service account for an urgent cutoff (see Off-boarding). No
+  action on Devoteam's side is needed or possible.
 - **Your audit logs, your name.** Because access happens via
   impersonation of a service account you own, every action shows up in
   your own Cloud Audit Logs under your own service account's identity.
